@@ -1,0 +1,25 @@
+HORAIRE ALRODIS - application installable (PWA)
+
+Contenu du dossier (tout doit rester ensemble, au même niveau) :
+  index.html, manifest.webmanifest, sw.js, favicon.svg,
+  icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png
+
+MISE EN LIGNE (GitHub Pages, gratuit)
+1. Sur github.com : New repository (ex. "horaire").
+2. "Add file" > "Upload files" : glissez TOUS les fichiers de ce dossier (pas le .zip), puis "Commit".
+3. Settings > Pages > Source : "Deploy from a branch", branche main, dossier / (root). Enregistrez.
+4. Après 1 à 2 minutes, l'adresse est : https://VOTRE-NOM.github.io/horaire/
+
+INSTALLATION
+- Android / PC (Chrome, Edge) : ouvrez l'adresse, puis bouton "Installer l'application" sur l'accueil
+  (ou menu du navigateur > "Installer l'application"). L'icône s'ajoute comme une vraie application.
+- iPhone / iPad (Safari) : Partager > "Sur l'écran d'accueil".
+- Important : si vous avez déjà ajouté un raccourci avant, supprimez-le puis réinstallez.
+
+MISE À JOUR
+Remplacez index.html sur GitHub : l'application se met à jour à la prochaine ouverture avec internet.
+Pour forcer une mise à jour, changez le numéro de version dans sw.js (CACHE='alrodis-horaire-v2').
+
+SYNCHRONISATION ENTRE APPAREILS
+Il reste à renseigner la configuration Firebase au début d'index.html
+(sinon chaque appareil garde ses propres données).
