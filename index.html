@@ -313,6 +313,8 @@ var LKINDS=['Congé payé','Récupération férié','Autre'];
 var ABS={M:{l:'Maladie',c:'cm'},CP:{l:'Congé payé',c:'cp'},RF:{l:'Récupération férié',c:'rf'},F:{l:'Férié',c:'fe'},AJ:{l:'Absence justifiée',c:'aj'},ANJ:{l:'Absence non justifiée',c:'anj'}};
 var ABSK=['M','CP','F','RF','AJ','ANJ'];
 var CT={cdi:'CDI',cdd:'CDD',etu:'Étudiant',flexi:'Flexi',interim:'Intérimaire (agence)',flexiag:'Flexi (agence)',gerant:'Gérant'};
+var XLO0='MORGANE\nOLIVIER\nAUDREY\nELIAS\n\nCASSIANE\nLOUIS\nSANDRINA\nTIFFANY\n\nALISSA\nROBIN\nNICOLAS\nVIRGINIE\nAURIANE\nFABIENNE\nALEX';
+function xloText(){var v=getp(S,['cfg','xlo']);return (typeof v==='string'&&v)?(v==='-'?'':v):XLO0;}
 var CTK=['cdi','cdd','etu','flexi','interim','flexiag','gerant'];
 var MONF=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
 var LS_DATA='alrodis_horaire_v1',LS_SESS='alrodis_horaire_sess';
@@ -866,6 +868,7 @@ function mgrEquipe(){
     h+='</div>';
   }
   if(old.length){h+='<div class="card"><h2>Anciens employés</h2>';old.forEach(function(e){h+='<div class="erow"><div class="en"><b>'+esc(e.n)+'</b><button class="btn sm" data-act="restore" data-id="'+e.id+'">Réintégrer</button></div><label>Sorti de l’entreprise le<input type="date" data-chg="outd" data-id="'+e.id+'" value="'+esc(e.out||'')+'"></label></div>';});h+='</div>';}
+  h+='<div class="card"><h2>Ordre des lignes dans l’Excel</h2><p class="mute">Un prénom par ligne, dans l’ordre voulu. Une ligne vide = une ligne vide dans l’Excel du mois. Les employés absents de cette liste sont ajoutés à la fin.</p><label>Liste<textarea id="xlot" style="min-height:260px">'+esc(xloText())+'</textarea></label><button class="btn pri" data-act="xlo-save" style="margin-top:12px">Enregistrer l’ordre</button></div>';
   h+='<div class="card"><h2>Importer une liste</h2><p class="mute">Un prénom par ligne. Après deux-points, le contrat : cdi, cdd, etudiant, flexi, interim, flexiag ou gerant. Les prénoms déjà présents sont ignorés.</p><label>Liste<textarea id="impt" placeholder="Camille: cdi&#10;Noé: cdd&#10;Lou: interim">'+(allEmps().length?'':esc(TEAM0))+'</textarea></label><button class="btn pri" data-act="import-team" style="margin-top:12px">Importer</button></div>';
   return h+bkHtml()+'<form class="card" data-form="mgrpin"><h2>Code de gestion</h2><label>Nouveau code (4 à 8 chiffres)<input type="password" id="newmgr" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"></label><button class="btn" type="submit" style="margin-top:12px">Changer le code</button></form>';}
 
@@ -1054,10 +1057,10 @@ function xmlUnesc(t){return String(t).replace(/&lt;/g,'<').replace(/&gt;/g,'>').
 function xlNorm(t){return String(t).toUpperCase().replace(/\s+/g,'');}
 function xlAbs(sh){
   var t=absCode(sh),h=absH(sh),hs=fmtN(h)+'H';
-  if(t==='M')return 'CM'+(h===8?'':hs);
-  if(t==='CP')return 'CP'+(h===8?'':hs);
-  if(t==='RF')return 'RCF'+hs;
-  if(t==='F')return 'F'+(h===8?'':hs);
+  if(t==='M')return 'CM'+hs;
+  if(t==='CP')return 'CP'+hs;
+  if(t==='RF')return 'RF'+hs;
+  if(t==='F')return 'F'+hs;
   if(t==='ANJ')return 'ANJ'+(h===8?'':hs);
   if(t==='AJ')return 'AJ'+(h===8?'':hs);
   return '';}
@@ -1232,32 +1235,37 @@ function xlProcess(zip,wk){
   }).then(function(blob){return {blob:blob,rep:X.rep};});}
 /* ---------- Excel complet du mois (toutes les semaines + prestations + ETP) ---------- */
 var MX_STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
-+'<fonts count="9"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFC00000"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFB45309"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF6246C7"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF0D7A6B"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FF475467"/><name val="Calibri"/></font><font><sz val="11"/><color rgb="FF7F7F7F"/><name val="Calibri"/></font></fonts>'
-+'<fills count="8"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF38761D"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF808080"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF00B0F0"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFE7E7E7"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFC00000"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/></patternFill></fill></fills>'
++'<fonts count="9"><font><sz val="9"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font><font><b/><sz val="9"/><color rgb="FF000000"/><name val="Aptos Narrow"/></font></fonts>'
++'<fills count="11"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF3B7D23"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF808080"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF00B0F0"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFBFBFBF"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF808080"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFF2CC"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFF0000"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFFFC000"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FF92D050"/></patternFill></fill></fills>'
 +'<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FF000000"/></left><right style="thin"><color rgb="FF000000"/></right><top style="thin"><color rgb="FF000000"/></top><bottom style="thin"><color rgb="FF000000"/></bottom><diagonal/></border></borders>'
 +'<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'
-+'<cellXfs count="21">'
-+'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'                                                                                  /*0 défaut*/
-+'<xf numFmtId="15" fontId="1" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*1 date*/
-+'<xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'                                                /*2 SEM*/
-+'<xf numFmtId="0" fontId="2" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*3 jour*/
++'<cellXfs count="26">'
++'<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                                              /*0 défaut*/
++'<xf numFmtId="15" fontId="1" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1"/>'                                       /*1 date*/
++'<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'                                                /*2 SEM*/
++'<xf numFmtId="0" fontId="1" fillId="3" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*3 bandeau gris*/
 +'<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*4 total entête*/
 +'<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'                                                /*5 nom*/
-+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'                     /*6 shift*/
-+'<xf numFmtId="0" fontId="3" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*7 CM*/
-+'<xf numFmtId="0" fontId="4" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*8 ANJ*/
-+'<xf numFmtId="0" fontId="5" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*9 CP*/
-+'<xf numFmtId="0" fontId="6" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*10 RCF*/
-+'<xf numFmtId="0" fontId="7" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*11 F*/
-+'<xf numFmtId="0" fontId="8" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*12 hors mois*/
-+'<xf numFmtId="2" fontId="1" fillId="4" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*13 total*/
-+'<xf numFmtId="0" fontId="2" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*14 FERIE*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*6 shift et absences (codes sans couleur, comme l’original)*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*7 (réservé)*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*8 (réservé)*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*9 (réservé)*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*10 (réservé)*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*11 (réservé)*/
++'<xf numFmtId="0" fontId="1" fillId="5" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>' /*12 hors mois*/
++'<xf numFmtId="0" fontId="1" fillId="4" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*13 total*/
++'<xf numFmtId="0" fontId="1" fillId="6" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*14 FERIE*/
 +'<xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/>'                                                                            /*15 gras*/
-+'<xf numFmtId="2" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'  /*16 nombre*/
-+'<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>'                                                                          /*17 texte*/
++'<xf numFmtId="2" fontId="1" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>'  /*16 nombre*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1"/>'                                                            /*17 texte*/
 +'<xf numFmtId="0" fontId="1" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*18 en-tête tableau*/
 +'<xf numFmtId="2" fontId="1" fillId="7" borderId="1" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*19 total tableau*/
 +'<xf numFmtId="0" fontId="1" fillId="7" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'                                                /*20 libellé total*/
++'<xf numFmtId="0" fontId="1" fillId="0" borderId="1" xfId="0" applyFont="1" applyBorder="1" applyAlignment="1"><alignment horizontal="right"/></xf>'       /*21 nom du jour*/
++'<xf numFmtId="0" fontId="1" fillId="8" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'                                                /*22 nom (payé par la mutuelle)*/
++'<xf numFmtId="0" fontId="1" fillId="9" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>'  /*23 contrat Team One (jaune)*/
++'<xf numFmtId="0" fontId="1" fillId="10" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>' /*24 contrat ALRODIS (vert)*/
++'<xf numFmtId="2" fontId="1" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyFont="1" applyAlignment="1"><alignment horizontal="center"/></xf>' /*25 total sans cadre*/
 +'</cellXfs></styleSheet>';
 function mxCell(ref,spec,st){
   var s=' s="'+st+'"';
@@ -1266,7 +1274,7 @@ function mxCell(ref,spec,st){
   if(spec.f!==undefined)return '<c r="'+ref+'"'+s+'><f>'+xmlEsc(spec.f)+'</f><v>'+spec.v+'</v></c>';
   return '<c r="'+ref+'"'+s+'><v>'+spec.n+'</v></c>';}
 function mxSheet(rows,cols,freeze){
-  var keys=Object.keys(rows).map(Number).sort(function(a,b){return a-b;}),x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"'+(freeze?'':' tabSelected="0"')+'>'+(freeze?'<pane xSplit="1" ySplit="3" topLeftCell="B4" activePane="bottomRight" state="frozen"/>':'')+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>',i,r;
+  var keys=Object.keys(rows).map(Number).sort(function(a,b){return a-b;}),x='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"'+(freeze?'':' tabSelected="0"')+'>'+(freeze?'<pane xSplit="6" ySplit="3" topLeftCell="G4" activePane="bottomRight" state="frozen"/>':'')+'</sheetView></sheetViews><sheetFormatPr defaultRowHeight="15"/><cols>',i,r;
   for(i=0;i<cols.length;i++)x+='<col min="'+cols[i][0]+'" max="'+cols[i][1]+'" width="'+cols[i][2]+'" customWidth="1"/>';
   x+='</cols><sheetData>';
   for(i=0;i<keys.length;i++){r=rows[keys[i]].sort(function(a,b){return a[0]-b[0];});x+='<row r="'+keys[i]+'">'+r.map(function(c){return c[1];}).join('')+'</row>';}
@@ -1276,10 +1284,19 @@ function mxSheetName(ym){var p=ym.split('-');return MONF[+p[1]-1].toUpperCase().
 function mxCellStyle(sh,t,out){
   if(out)return 12;
   if(sh&&sh.a)return 6;
-  if(t==='M')return 7;if(t==='ANJ')return 8;if(t==='AJ')return 9;if(t==='CP')return 9;if(t==='RF')return 10;if(t==='F')return 11;
   return 6;}
+function mxLayout(people){
+  var L=xloText().split(/\r?\n/),out=[],used={},map={},i,k,nm,e,blank=false;
+  people.forEach(function(p){map[p.n.toLowerCase().replace(/^\s+|\s+$/g,'')]=p;});
+  for(i=0;i<L.length;i++){
+    nm=L[i].replace(/^\s+|\s+$/g,'').toLowerCase();
+    if(!nm){if(out.length&&out[out.length-1])out.push(null);continue;}
+    e=map[nm];if(e&&!used[e.id]){used[e.id]=1;out.push(e);}}
+  while(out.length&&!out[out.length-1])out.pop();
+  people.forEach(function(p){if(!used[p.id])out.push(p);});
+  return out;}
 function monthXlsx(ym){
-  var days=monthDays(ym),m0=iso(mondayOf(parse(days[0]))),last=days[days.length-1],wks=[],w=m0,rows={},r2={},people,ftw=ftwH(),nw,b,i,j,d,date,sh,t,c0,col,txt,out,counted,sum,e,row,ctot,rr,totR,etpR,cols=[[1,1,16]],sheet1,sheet2,prest,k,m,rowsP={},nRows,wkTotCols=[],mt,lg,hasAny;
+  var days=monthDays(ym),m0=iso(mondayOf(parse(days[0]))),last=days[days.length-1],wks=[],w=m0,rows={},r2={},people,ftw=ftwH(),nw,b,i,j,d,date,sh,t,c0,col,txt,out,counted,sum,e,row,ctot,rr,totR,etpR,cols=[[1,1,9],[2,3,11],[4,4,11],[5,5,26],[6,6,16]],sheet1,sheet2,prest,k,m,rowsP={},nRows,wkTotCols=[],mt,lg,hasAny;
   while(w<=last){wks.push(w);w=addDays(w,7);}
   nw=wks.length;
   people=allEmps().filter(function(e){
@@ -1288,28 +1305,33 @@ function monthXlsx(ym){
     for(var q=0;q<wks.length*7;q++){if(entryOn(e.id,addDays(m0,q)))return true;}
     return false;});
   hasAny=false;
-  mxPut(rows,1,1,null,0);mxPut(rows,1,2,{t:'JOUR'},15);mxPut(rows,1,3,{t:mxSheetName(ym)},2);
+  ['',  'H planifiée','Différence','SALAIRE','contrats'].forEach(function(h,ix){mxPut(rows,ix+1,1,h?{t:h}:null,4);mxPut(rows,ix+1,2,ix===0?{t:'MOIS'}:null,4);mxPut(rows,ix+1,3,null,3);});
+  mxPut(rows,6,1,null,0);mxPut(rows,6,2,{t:'JOUR'},21);mxPut(rows,6,3,null,3);
   for(b=0;b<nw;b++){
-    c0=2+8*b;cols.push([c0,c0+6,11]);cols.push([c0+7,c0+7,8]);
+    c0=7+8*b;cols.push([c0,c0+6,11]);cols.push([c0+7,c0+7,8]);
     for(i=0;i<7;i++){date=addDays(wks[b],i);
       mxPut(rows,c0+i,1,{n:xlSerial(date)},1);
-      mxPut(rows,c0+i,2,{t:DAYS[i]},3);
+      mxPut(rows,c0+i,2,{t:DAYS[i]},21);
       mxPut(rows,c0+i,3,holName(date)?{t:'FERIE'}:null,holName(date)?14:3);}
-    mxPut(rows,c0+7,1,{t:'Total'},4);mxPut(rows,c0+7,2,null,3);mxPut(rows,c0+7,3,{t:'SEM'+isoWeek(wks[b])},2);
+    mxPut(rows,c0+7,1,{t:'Total'},4);mxPut(rows,c0+7,2,null,21);mxPut(rows,c0+7,3,{t:'SEM'+isoWeek(wks[b])},2);
     wkTotCols.push(c0+7);}
-  ctot=2+8*nw;cols.push([ctot,ctot,10]);
-  mxPut(rows,ctot,1,{t:'Total mois'},4);mxPut(rows,ctot,2,null,3);mxPut(rows,ctot,3,null,3);
+  ctot=7+8*nw;cols.push([ctot,ctot,10]);
+  mxPut(rows,ctot,1,{t:'Total mois'},4);mxPut(rows,ctot,2,null,21);mxPut(rows,ctot,3,null,3);
   row=4;
-  people.forEach(function(e){
-    var sumMonth=0,tcells=[],tvals=[];
-    mxPut(rows,1,row,{t:e.n.toUpperCase()},5);
+  mxLayout(people).forEach(function(e){
+    var sumMonth=0,tcells=[],tvals=[],ctx;
+    if(!e){mxPut(rows,1,row,null,13);mxPut(rows,2,row,null,5);mxPut(rows,3,row,null,13);mxPut(rows,4,row,null,5);mxPut(rows,5,row,null,5);mxPut(rows,6,row,null,5);
+      for(b=0;b<nw;b++){c0=7+8*b;for(i=0;i<7;i++)mxPut(rows,c0+i,row,null,mxCellStyle(null,'',addDays(wks[b],i).slice(0,7)!==ym));mxPut(rows,c0+7,row,null,13);}
+      mxPut(rows,ctot,row,null,13);row++;return;}
+    mxPut(rows,6,row,{t:e.n.toUpperCase()},(e.mu&&e.mu<=last)?22:5);
+    ctx={tc:[],row:row};
     for(b=0;b<nw;b++){
-      c0=2+8*b;counted=[];
+      c0=7+8*b;counted=[];
       for(i=0;i<7;i++){
         date=addDays(wks[b],i);sh=entryOn(e.id,date);t=absCode(sh);
         out=date.slice(0,7)!==ym;
         txt=(sh&&sh.a)?xlShift(sh):(t?xlAbs(sh):'');
-        mxPut(rows,c0+i,row,txt?{t:txt}:null,mxCellStyle(sh,t,out&&!isAgency(e.c)&&txt!==''));
+        mxPut(rows,c0+i,row,txt?{t:txt}:null,mxCellStyle(sh,t,out));
         if(sh&&sh.a&&(isAgency(e.c)||!out)){counted.push(Math.round(shiftMin(sh)/60*100)/100);}
       }
       sum=0;for(i=0;i<counted.length;i++)sum+=counted[i];sum=Math.round(sum*100)/100;
@@ -1321,27 +1343,31 @@ function monthXlsx(ym){
     sumMonth=Math.round(sumMonth*100)/100;
     if(e.c==='gerant'||!tcells.length)mxPut(rows,ctot,row,null,13);
     else mxPut(rows,ctot,row,{f:'SUM('+tcells.join(',')+')',v:sumMonth},13);
+    mxPut(rows,1,row,(e.c==='gerant'||!tcells.length)?null:{f:'SUM('+tcells.join(',')+')',v:sumMonth},13);
+    mxPut(rows,2,row,null,5);mxPut(rows,3,row,{f:'A'+row+'-B'+row,v:sumMonth},13);mxPut(rows,4,row,null,5);
+    mxPut(rows,5,row,{t:(e.cn||(e.c&&CT[e.c]?CT[e.c].toUpperCase():''))||''},(isAgency(e.c)||e.c==='flexiag')?23:((e.c==='cdd'||e.c==='etu'||e.c==='flexi')?24:5));
     if(tcells.length||e.c==='gerant')hasAny=true;
     row++;});
   nRows=row-1;
   /* ligne total heures + ETP (semaine entière) */
-  mxPut(rows,1,row,{t:'TOTAL HEURES'},20);mxPut(rows,1,row+1,{t:'ETP (semaine entière)'},20);
+  mxPut(rows,6,row,{t:'TOTAL HEURES'},15);mxPut(rows,6,row+1,{t:'ETP (semaine entière)'},15);
   for(b=0;b<nw;b++){
-    c0=2+8*b;
-    for(i=0;i<7;i++){mxPut(rows,c0+i,row,null,20);mxPut(rows,c0+i,row+1,null,20);}
+    c0=7+8*b;
+    for(i=0;i<7;i++){mxPut(rows,c0+i,row,null,15);mxPut(rows,c0+i,row+1,null,15);}
     sum=0;people.forEach(function(e){if(e.c==='gerant')return;for(i=0;i<7;i++){date=addDays(wks[b],i);sh=entryOn(e.id,date);if(sh&&sh.a&&(isAgency(e.c)||date.slice(0,7)===ym))sum+=Math.round(shiftMin(sh)/60*100)/100;}});
     sum=Math.round(sum*100)/100;
-    mxPut(rows,c0+7,row,{f:'SUM('+colName(c0+7)+'4:'+colName(c0+7)+nRows+')',v:sum},19);
+    mxPut(rows,c0+7,row,{f:'SUM('+colName(c0+7)+'4:'+colName(c0+7)+nRows+')',v:sum},25);
     rr=etpMin(wks[b],addDays(wks[b],6));mt=Math.round(etpAllMin(rr)/60*100)/100;
-    mxPut(rows,c0+7,row+1,{f:mt+'/'+ftw,v:Math.round(mt/ftw*10000)/10000},19);}
-  mxPut(rows,ctot,row,{f:'SUM('+wkTotCols.map(function(c){return colName(c)+row;}).join(',')+')',v:0},19);
+    mxPut(rows,c0+7,row+1,{f:mt+'/'+ftw,v:Math.round(mt/ftw*10000)/10000},25);}
+  mxPut(rows,ctot,row,{f:'SUM('+wkTotCols.map(function(c){return colName(c)+row;}).join(',')+')',v:0},25);
   /* total mois : valeur mise en cache calculée */
   (function(){var s=0;people.forEach(function(e){if(e.c==='gerant')return;for(var q=0;q<nw*7;q++){var dt=addDays(m0,q),x=entryOn(e.id,dt);if(x&&x.a&&(isAgency(e.c)||dt.slice(0,7)===ym))s+=Math.round(shiftMin(x)/60*100)/100;}});
-    rows[row].forEach(function(c){if(c[0]===ctot)c[1]=mxCell(colName(ctot)+row,{f:'SUM('+wkTotCols.map(function(cc){return colName(cc)+row;}).join(',')+')',v:Math.round(s*100)/100},19);});})();
-  mxPut(rows,ctot,row+1,null,20);
+    rows[row].forEach(function(c){if(c[0]===ctot)c[1]=mxCell(colName(ctot)+row,{f:'SUM('+wkTotCols.map(function(cc){return colName(cc)+row;}).join(',')+')',v:Math.round(s*100)/100},25);});})();
+  mxPut(rows,ctot,row+1,null,15);
+  mxPut(rows,5,row,{t:'ALRODIS'},24);mxPut(rows,5,row+1,{t:'TEAM ONE'},23);
   row+=3;
-  lg=['CM : certificat médical','ANJ : absence non justifiée','AJ : absence justifiée','CP : congé payé','RCF : récupération férié','F : férié','Cases grisées : jours hors du mois (non comptés pour le personnel ALRODIS ; les intérimaires et flexis d’agence comptent la semaine entière)','Total = heures payées (pause de 15 min déduite pour les shifts de 6 h ou plus qui finissent à :15) · ETP = heures payées de la semaine entière ÷ '+ftw];
-  for(i=0;i<lg.length;i++){mxPut(rows,1,row+i,{t:lg[i]},0);}
+  lg=['CM:CERTIFICAT MEDICAL','ANJ:ABSENCE NON JUSTIFIEE','AJ:ABSENCE JUSTIFIEE','CP:CONGE PAYE','F:FERIE','RF:RECUPERATION FERIE','Cases grisées : jours hors du mois (non comptés pour le personnel ALRODIS ; les intérimaires et flexis d’agence comptent la semaine entière)','Total = heures payées (pause de 15 min déduite pour les shifts de 6 h ou plus qui finissent à :15) · ETP = heures payées de la semaine entière ÷ '+ftw];
+  for(i=0;i<lg.length;i++){mxPut(rows,6,row+i,{t:lg[i]},15);}
   sheet1=mxSheet(rows,cols,true);
   /* feuille prestations */
   k=1;
@@ -1357,7 +1383,7 @@ function monthXlsx(ym){
     k++;});
   if(k>first){
     mxPut(r2,1,k,{t:'TOTAL'},20);mxPut(r2,2,k,null,20);
-    for(j=3;j<=9;j++){var tv=0,rr2;for(rr2=first;rr2<k;rr2++){var cc=r2[rr2].filter(function(cx){return cx[0]===j;})[0];var mm=/<v>([^<]*)<\/v>/.exec(cc[1]);tv+=mm?parseFloat(mm[1]):0;}
+    for(j=3;j<=10;j++){var tv=0,rr2;for(rr2=first;rr2<k;rr2++){var cc=r2[rr2].filter(function(cx){return cx[0]===j;})[0];var mm=/<v>([^<]*)<\/v>/.exec(cc[1]);tv+=mm?parseFloat(mm[1]):0;}
       mxPut(r2,j,k,{f:'SUM('+colName(j)+first+':'+colName(j)+(k-1)+')',v:Math.round(tv*100)/100},19);}
     k++;}
   k++;
@@ -1370,7 +1396,7 @@ function monthXlsx(ym){
   rr=etpMin(days[0],last);mt=Math.round(etpAllMin(rr)/60*100)/100;
   mxPut(r2,1,k,{t:'ETP du mois'},20);mxPut(r2,2,k,{t:'heures payées ÷ ('+ftw+' h × '+days.length+' j ÷ 7)'},17);
   mxPut(r2,3,k,{f:mt+'/('+ftw+'*'+days.length+'/7)',v:Math.round(mt/(ftw*days.length/7)*10000)/10000},19);
-  sheet2=mxSheet(r2,[[1,1,16],[2,2,20],[3,9,18]],false);
+  sheet2=mxSheet(r2,[[1,1,16],[2,2,20],[3,10,18]],false);
   return {name1:mxSheetName(ym),sheet1:sheet1,sheet2:sheet2,hasAny:hasAny||people.length>0};}
 function monthXlsxRun(){
   var ym=V.mo,res;
@@ -1616,6 +1642,7 @@ function act(a,el){
     case 'cp-add':cpAdd(id);break;
     case 'cp-del':cpDel(id,+v);break;
     case 'restore':put('employees/'+id+'/a',true);break;
+    case 'xlo-save':put('cfg/xlo',(byId('xlot').value.replace(/^\s+|\s+$/g,''))||'-');toast('Ordre enregistré');break;
     case 'import-team':importTeam();break;
     case 'mo':V.mo=addMonth(V.mo,+el.getAttribute('data-n'));V.openP='';render();break;
     case 'open':V.openP=(V.openP===id)?'':id;render();break;
