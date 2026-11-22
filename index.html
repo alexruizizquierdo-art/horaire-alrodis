@@ -379,7 +379,7 @@ function put(path,val){
   if(val===undefined)val=null;
   setPath(S,path.split('/'),val);
   lsSet(LS_DATA,JSON.stringify(S));
-  if(useFb){try{ref.child(path).set(val).catch(fbErr);}catch(e){setSync('err');}}
+  if(useFb){try{ref.child(path).set((val&&typeof val==='object')?JSON.parse(JSON.stringify(val)):((typeof val==='number'&&val!==val)?null:val)).catch(fbErr);}catch(e){fbErr(e);}}
   if(V.screen==='emp'&&V.loginFor&&path.indexOf('weeks/')===0){var mA=/^weeks\/([^\/]+)\/avail\/([^\/]+)/.exec(path);if(mA&&mA[2]===V.loginFor)logAvail(mA[1],mA[2]);}
   scheduleRender();
 }
@@ -557,11 +557,11 @@ function initData(){
         if(!v&&fbFirst){fbFirst=false;
           /* base vide : on y envoie les données déjà présentes sur cet appareil (ou l'équipe de départ) */
           if(localInit&&localInit.employees&&Object.keys(localInit.employees).length){S=localInit;}else{seedDemo();}
-          ref.set(S);return;}
+          ref.set(S).catch(fbErr);return;}
         if(fbFirst&&v&&localInit&&localInit.employees){
           /* si cet appareil contient plus de données que la base (équipe, horaires, congés), on garde celles de l'appareil et on les envoie */
           var sc=function(o){var n=0,k;for(k in {employees:1,weeks:1,leaves:1}){if(o&&o[k])n+=Object.keys(o[k]).length;}return n;};
-          if(sc(localInit)>sc(v)){fbFirst=false;S=localInit;ref.set(S);return;}}
+          if(sc(localInit)>sc(v)){fbFirst=false;S=localInit;ref.set(S).catch(fbErr);return;}}
         fbFirst=false;
         S=v||{};lsSet(LS_DATA,JSON.stringify(S));loaded=true;scheduleRender();},function(){setSync('err');});
       firebase.database().ref('.info/connected').on('value',function(s){setSync(s.val()?'ok':'off');});
@@ -914,7 +914,7 @@ function bkRestore(file){
     ne=Object.keys(d.employees).length;nw=d.weeks?Object.keys(d.weeks).length:0;
     if(!confirm('Remplacer TOUTES les données actuelles par la sauvegarde du '+String(o.date||'').slice(0,10)+' ('+ne+' personnes, '+nw+' semaines) ? Cette action est définitive.'))return;
     S=d;lsSet(LS_DATA,JSON.stringify(S));
-    if(useFb){try{ref.set(S).catch(fbErr);}catch(e){setSync('err');}}
+    if(useFb){try{ref.set(S).catch(fbErr);}catch(e){fbErr(e);}}
     V.sheet=null;toast('Sauvegarde restaurée');render();};
   rd.onerror=function(){toast('Fichier illisible');};
   rd.readAsText(file);}
