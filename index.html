@@ -557,10 +557,10 @@ function initData(){
           /* base vide : on y envoie les données déjà présentes sur cet appareil (ou l'équipe de départ) */
           if(localInit&&localInit.employees&&Object.keys(localInit.employees).length){S=localInit;}else{seedDemo();}
           ref.set(S);return;}
-        if(fbFirst&&v&&localInit){
-          /* la base ne contient que l'équipe de départ, alors que cet appareil a déjà un horaire encodé : on garde celui de l'appareil */
-          var wl=localInit.weeks?Object.keys(localInit.weeks).length:0,wr=v.weeks?Object.keys(v.weeks).length:0,ll=localInit.leaves?Object.keys(localInit.leaves).length:0,lr=v.leaves?Object.keys(v.leaves).length:0;
-          if((wl>wr||ll>lr)&&localInit.employees&&Object.keys(localInit.employees).length){fbFirst=false;S=localInit;ref.set(S);return;}}
+        if(fbFirst&&v&&localInit&&localInit.employees){
+          /* si cet appareil contient plus de données que la base (équipe, horaires, congés), on garde celles de l'appareil et on les envoie */
+          var sc=function(o){var n=0,k;for(k in {employees:1,weeks:1,leaves:1}){if(o&&o[k])n+=Object.keys(o[k]).length;}return n;};
+          if(sc(localInit)>sc(v)){fbFirst=false;S=localInit;ref.set(S);return;}}
         fbFirst=false;
         S=v||{};lsSet(LS_DATA,JSON.stringify(S));loaded=true;scheduleRender();},function(){setSync('err');});
       firebase.database().ref('.info/connected').on('value',function(s){setSync(s.val()?'ok':'off');});
