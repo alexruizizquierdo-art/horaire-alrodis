@@ -653,13 +653,23 @@ function homeHtml(){
   }else h+='<div class="card"><h2>Équipe à configurer</h2><p class="mute">La gestion peut ajouter les employés depuis son espace.</p></div>';
   return h+installHtml()+'<button class="btn ghost mgrlink" data-act="guide-home" style="margin-top:20px">Comment ça marche ?</button><button class="btn mgrlink" data-act="login-mgr" style="margin-top:10px">Espace gestion</button><div class="foot">'+syncPill()+'</div></div>';}
 
+var MGRS=[['alex','Alex'],['fabienne','Fabienne']];
+function mgrDe(w){var n=mgrName(w);return /^[AEIOUYH]/i.test(n)?'d’'+n:'de '+n;}
+function mgrName(w){var i;for(i=0;i<MGRS.length;i++){if(MGRS[i][0]===w)return MGRS[i][1];}return '';}
+function mgrCodes(){var m=getp(S,['cfg','mgrs'])||{},a=[],k;if(getp(S,['cfg','mgr']))a.push(getp(S,['cfg','mgr']));for(k in m){if(m.hasOwnProperty(k)&&m[k])a.push(m[k]);}return a;}
+function mgrAuthNeeded(who){return !getp(S,['cfg','mgrs',who])&&mgrCodes().length>0&&!V.mgrOk&&!getp(S,['cfg','mgrr',who]);}
 function loginHtml(){
-  var mgr=V.loginFor==='mgr',e=mgr?null:empById(V.loginFor);
+  var mgr=V.loginFor==='mgr',e=mgr?null:empById(V.loginFor),who=V.mgrWho||'',nm=mgrName(who),has,title,sub,i,c;
+  if(mgr&&!who){
+    c='<div class="wrap"><button class="btn ghost sm" data-act="home" style="margin-top:8px">‹ Retour</button><div class="card"><h2>Espace gestion</h2><p class="mute">Qui êtes-vous ?</p>';
+    for(i=0;i<MGRS.length;i++)c+='<button class="btn pri" data-act="mgr-who" data-v="'+MGRS[i][0]+'" style="margin-top:10px;width:100%">'+MGRS[i][1]+'</button>';
+    return c+'</div></div>';}
   if(!mgr&&!e){return '<div class="wrap"><p class="empty">Employé introuvable.</p><button class="btn mgrlink" data-act="home">Retour</button></div>';}
-  var has=mgr?getp(S,['cfg','mgr']):e.pin,title,sub;
-  if(has){title='Entrez votre code';sub=mgr?'Espace gestion':'Bonjour '+e.n;}
-  else if(V.pinStep===2){title='Confirmez le code';sub=mgr?'Espace gestion':e.n;}
-  else{title=mgr?'Créez le code de gestion':'Créez votre code';sub=mgr?'4 à 8 chiffres. Gardez-le pour vous.':'Choisissez 4 chiffres faciles à retenir, '+e.n+'.';}
+  has=mgr?getp(S,['cfg','mgrs',who]):e.pin;
+  if(has){title='Entrez votre code';sub=mgr?'Espace gestion · '+nm:'Bonjour '+e.n;}
+  else if(mgr&&mgrAuthNeeded(who)){title='Autorisation';sub='Entrez le code d’un gérant existant pour créer le code '+mgrDe(who)+'.';}
+  else if(V.pinStep===2){title='Confirmez le code';sub=mgr?'Espace gestion · '+nm:e.n;}
+  else{title=mgr?'Créez le code '+mgrDe(who):'Créez votre code';sub=mgr?'4 à 8 chiffres. Gardez-le pour vous.':'Choisissez 4 chiffres faciles à retenir, '+e.n+'.';}
   return '<div class="wrap"><button class="btn ghost sm" data-act="home" style="margin-top:8px">‹ Retour</button><form class="card pinbox" data-form="pin"><h2>'+esc(title)+'</h2><p class="mute">'+esc(sub)+'</p><input type="password" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="'+(mgr?8:4)+'" autocomplete="off" aria-label="Code"><p class="err">'+esc(V.pinErr)+'</p><button class="btn pri" type="button" data-act="pin-ok">Valider</button></form></div>';}
 
 function empHtml(){
@@ -783,7 +793,7 @@ function mgrEtp(){
   h+='<p class="count">Heures = shifts de l’horaire (pause déduite comme dans l’Excel) + absences payées (maladie, CP, F, RF, 8 h par défaut), gérants exclus. Chaque jour compte dans le mois où il tombe : une semaine à cheval est coupée au jour près, donc l’ETP d’un mois ou d’une année est exact. Le tableau « semaine par semaine » donne l’ETP de la semaine entière. Seules les semaines encodées dans l’appli sont comptées.</p>';
   return h;}
 function mgrHtml(){
-  if(!getp(S,['cfg','mgr'])){if(!loaded)return '<div class="wrap"><p class="empty">Chargement…</p></div>';lsDel(LS_SESS);V.screen='home';return homeHtml();}
+  if(!mgrCodes().length){if(!loaded)return '<div class="wrap"><p class="empty">Chargement…</p></div>';lsDel(LS_SESS);V.screen='home';return homeHtml();}
   var pend=allLeaves().filter(function(l){return l.s==='p';}).length;
   var tabs=[['horaire','Horaire'],['dispos','Dispos'],['conges','Congés',pend||''],['prest','Prestations'],['etp','ETP'],['equipe','Équipe',contractAlerts().length||''],['activite','Activité',(V.mgrTab==='activite'?0:actNew())||''],['guide','Guide']],h=hdr('Gestion','Horaire de l’équipe',tabs,V.mgrTab,true)+'<div class="wrap wide">';
   if(V.mgrTab==='horaire')h+=mgrHoraire();
@@ -914,7 +924,10 @@ function mgrEquipe(){
   if(old.length){h+='<div class="card"><h2>Anciens employés</h2>';old.forEach(function(e){h+='<div class="erow"><div class="en"><b>'+esc(e.n)+'</b><button class="btn sm" data-act="restore" data-id="'+e.id+'">Réintégrer</button></div><label>Sorti de l’entreprise le<input type="date" data-chg="outd" data-id="'+e.id+'" value="'+esc(e.out||'')+'"></label></div>';});h+='</div>';}
   h+='<div class="card"><h2>Ordre des lignes dans l’Excel</h2><p class="mute">Un prénom par ligne, dans l’ordre voulu. Une ligne vide = une ligne vide dans l’Excel du mois. Les employés absents de cette liste sont ajoutés à la fin.</p><label>Liste<textarea id="xlot" style="min-height:260px">'+esc(xloText())+'</textarea></label><button class="btn pri" data-act="xlo-save" style="margin-top:12px">Enregistrer l’ordre</button></div>';
   h+='<div class="card"><h2>Importer une liste</h2><p class="mute">Un prénom par ligne. Après deux-points, le contrat : cdi, cdd, etudiant, flexi, interim, flexiag ou gerant. Les prénoms déjà présents sont ignorés.</p><label>Liste<textarea id="impt" placeholder="Camille: cdi&#10;Noé: cdd&#10;Lou: interim">'+(allEmps().length?'':esc(TEAM0))+'</textarea></label><button class="btn pri" data-act="import-team" style="margin-top:12px">Importer</button></div>';
-  return h+bkHtml()+'<form class="card" data-form="mgrpin"><h2>Code de gestion</h2><label>Nouveau code (4 à 8 chiffres)<input type="password" id="newmgr" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"></label><button class="btn" type="submit" style="margin-top:12px">Changer le code</button></form>';}
+  h+='<div class="card"><h2>Accès gestion</h2><p class="mute">Chaque gérant a son propre code. Si l’un l’oublie, l’autre peut le réinitialiser ici.</p>';
+  MGRS.forEach(function(m){var has=!!getp(S,['cfg','mgrs',m[0]]);h+='<div class="mine"><b>'+m[1]+'</b><span>'+(has?'Code défini':'Pas encore de code')+'</span></div>'+((has&&V.mgrWho&&V.mgrWho!==m[0])?'<button class="btn sm danger" data-act="mgr-reset" data-v="'+m[0]+'" style="margin:4px 0 10px">Réinitialiser le code '+mgrDe(m[0])+'</button>':'');});
+  h+='</div>';
+  return h+bkHtml()+'<form class="card" data-form="mgrpin"><h2>Mon code de gestion'+(V.mgrWho?' ('+mgrName(V.mgrWho)+')':'')+'</h2><label>Nouveau code (4 à 8 chiffres)<input type="password" id="newmgr" inputmode="numeric" pattern="[0-9]*" maxlength="8" autocomplete="off"></label><button class="btn" type="submit" style="margin-top:12px">Changer le code</button></form>';}
 
 function cpHtml(e){
   var ps,i,h;
@@ -1533,17 +1546,21 @@ document.addEventListener('focusout',function(){if(pendingRender){setTimeout(fun
 /* ---------- actions ---------- */
 function startSession(role,id){
   lsSet(LS_SESS,JSON.stringify({r:role,id:id||''}));
-  V.screen=role==='mgr'?'mgr':'emp';V.loginFor=id||null;V.sheet=null;V.wk=defaultWeek();V.pinErr='';V.pinTmp='';V.pinStep=0;render();}
+  V.screen=role==='mgr'?'mgr':'emp';V.loginFor=id||null;V.mgrWho=role==='mgr'?(id||''):'';V.mgrOk=false;V.sheet=null;V.wk=defaultWeek();V.pinErr='';V.pinTmp='';V.pinStep=0;render();}
 function onLogin(val){
-  var mgr=V.loginFor==='mgr',e=mgr?null:empById(V.loginFor),has=mgr?getp(S,['cfg','mgr']):(e?e.pin:'');
+  var mgr=V.loginFor==='mgr',who=V.mgrWho||'',e=mgr?null:empById(V.loginFor),has=mgr?getp(S,['cfg','mgrs',who]):(e?e.pin:''),k,ok;
   if(mgr?!/^\d{4,8}$/.test(val):!/^\d{4}$/.test(val)){V.pinErr=mgr?'Le code doit contenir 4 à 8 chiffres.':'Le code doit contenir 4 chiffres.';render();return;}
   if(has){
-    if(hashPin(val)===has){startSession(mgr?'mgr':'emp',mgr?'':e.id);}
+    if(hashPin(val)===has){startSession(mgr?'mgr':'emp',mgr?who:e.id);}
     else{V.pinErr='Code incorrect.';render();}
+  }else if(mgr&&mgrAuthNeeded(who)){
+    ok=false;k=mgrCodes();k.forEach(function(h){if(hashPin(val)===h)ok=true;});
+    if(ok){V.mgrOk=true;V.pinErr='';V.pinStep=0;render();}else{V.pinErr='Code incorrect.';render();}
   }else if(V.pinStep!==2){V.pinTmp=val;V.pinStep=2;V.pinErr='';render();}
   else if(val===V.pinTmp){
-    put(mgr?'cfg/mgr':'employees/'+e.id+'/pin',hashPin(val));
-    startSession(mgr?'mgr':'emp',mgr?'':e.id);
+    if(mgr){put('cfg/mgrs/'+who,hashPin(val));if(getp(S,['cfg','mgrr',who]))put('cfg/mgrr/'+who,null);}
+    else put('employees/'+e.id+'/pin',hashPin(val));
+    startSession(mgr?'mgr':'emp',mgr?who:e.id);
   }else{V.pinStep=1;V.pinTmp='';V.pinErr='Les deux codes sont différents. Recommencez.';render();}
 }
 function setAvail(d,s){
@@ -1638,7 +1655,8 @@ function importTeam(){
 function changeMgrPin(){
   var v=byId('newmgr').value;
   if(!/^\d{4,8}$/.test(v)){toast('4 à 8 chiffres');return;}
-  put('cfg/mgr',hashPin(v));toast('Code de gestion modifié');}
+  if(V.mgrWho)put('cfg/mgrs/'+V.mgrWho,hashPin(v));else put('cfg/mgr',hashPin(v));
+  toast('Code modifié');}
 
 function act(a,el){
   var d=el.getAttribute('data-d'),e=el.getAttribute('data-e'),id=el.getAttribute('data-id'),v=el.getAttribute('data-v');
@@ -1646,10 +1664,12 @@ function act(a,el){
     case 'wheel-tap':{var wk2=+el.getAttribute('data-k'),wh=byId('wheel');if(wh){if(wk2===Math.round(wh.scrollTop/44))act('wheel-ok',el);else{V.whoIdx=wk2;try{wh.scrollTo({top:wk2*44,behavior:'smooth'});}catch(e3){wh.scrollTop=wk2*44;}}}break;}
     case 'wheel-ok':{var wh2=byId('wheel'),wl2=whoList(),k3=wh2?Math.round(wh2.scrollTop/44):V.whoIdx,w3=wl2[Math.max(0,Math.min(k3,wl2.length-1))];if(w3){V.whoIdx=0;V.screen='login';V.loginFor=w3.id;V.pinStep=0;V.pinTmp='';V.pinErr='';render();}break;}
     case 'pick':V.screen='login';V.loginFor=id;V.pinStep=0;V.pinTmp='';V.pinErr='';render();break;
-    case 'login-mgr':V.screen='login';V.loginFor='mgr';V.pinStep=0;V.pinTmp='';V.pinErr='';render();break;
+    case 'mgr-who':V.mgrWho=v;V.mgrOk=false;V.pinStep=0;V.pinTmp='';V.pinErr='';render();break;
+    case 'mgr-reset':if(confirm('Réinitialiser le code '+mgrDe(v)+' ? '+mgrName(v)+' pourra en créer un nouveau à sa prochaine connexion.')){put('cfg/mgrs/'+v,null);put('cfg/mgrr/'+v,true);toast('Code réinitialisé');}break;
+    case 'login-mgr':V.mgrWho='';V.mgrOk=false;V.screen='login';V.loginFor='mgr';V.pinStep=0;V.pinTmp='';V.pinErr='';render();break;
     case 'guide-home':V.screen='guide';render();break;
     case 'home':V.screen='home';V.loginFor=null;render();break;
-    case 'logout':lsDel(LS_SESS);V.screen='home';V.sheet=null;V.loginFor=null;render();break;
+    case 'logout':lsDel(LS_SESS);V.mgrWho='';V.screen='home';V.sheet=null;V.loginFor=null;render();break;
     case 'install':if(deferredInstall){var di=deferredInstall;deferredInstall=null;try{di.prompt();}catch(e1){}render();}break;
     case 'bk-dl':bkDownload();break;
     case 'log-go':V.mgrTab=v;if(el.getAttribute('data-w'))V.wk=el.getAttribute('data-w');V.actSeen=undefined;render();break;
@@ -1791,7 +1811,7 @@ APP.addEventListener('submit',function(ev){
 initData();
 try{
   var sess=JSON.parse(lsGet(LS_SESS)||'null');
-  if(sess&&sess.r==='mgr'){V.screen='mgr';}
+  if(sess&&sess.r==='mgr'){V.screen='mgr';V.mgrWho=sess.id||'';}
   else if(sess&&sess.r==='emp'&&sess.id){V.screen='emp';V.loginFor=sess.id;}
 }catch(err){}
 render();
