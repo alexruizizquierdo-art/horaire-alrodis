@@ -379,7 +379,7 @@ function put(path,val){
   if(val===undefined)val=null;
   setPath(S,path.split('/'),val);
   lsSet(LS_DATA,JSON.stringify(S));
-  if(useFb){try{ref.child(path).set(val).catch(function(){setSync('err');});}catch(e){setSync('err');}}
+  if(useFb){try{ref.child(path).set(val).catch(fbErr);}catch(e){setSync('err');}}
   if(V.screen==='emp'&&V.loginFor&&path.indexOf('weeks/')===0){var mA=/^weeks\/([^\/]+)\/avail\/([^\/]+)/.exec(path);if(mA&&mA[2]===V.loginFor)logAvail(mA[1],mA[2]);}
   scheduleRender();
 }
@@ -390,6 +390,7 @@ function logAvail(wk,eid){var n=0,d,av;for(d=0;d<7;d++){av=getp(S,['weeks',wk,'a
 function seenGet(){return +(lsGet('alrodis_seen')||0);}
 function actNew(){var L=S.log||{},sn=seenGet(),n=0,k;for(k in L){if(L.hasOwnProperty(k)&&L[k]&&L[k].t>sn)n++;}return n;}
 function setSync(s){syncState=s;scheduleRender();}
+function fbErr(er){var c=er&&er.code?String(er.code):'';V.fbMsg=(c.indexOf('PERMISSION')>=0)?'Firebase refuse l’enregistrement : les règles de la base ne sont pas publiées ou sont incorrectes.':'Firebase ne répond pas ('+(c||'erreur réseau')+').';setSync('err');}
 function capName(n){return String(n||'').replace(/^\s+|\s+$/g,'').toLowerCase().replace(/(^|[\s\-’'])([a-zà-ÿ])/g,function(m,x,y){return x+y.toUpperCase();});}
 function allEmps(){var o=S.employees||{},a=[],k,e;
   for(k in o){if(o.hasOwnProperty(k)){e=o[k];if(e&&e.n)a.push({id:k,n:capName(e.n),o:e.o||0,a:e.a!==false,pin:e.pin||'',h:e.h||0,c:e.c||'',cn:e.cn||'',cp:e.cp||null,mu:e.mu||'',out:e.out||''});}}
@@ -796,10 +797,14 @@ function mgrEtp(){
   h+='<div class="card"><label>Temps plein de référence (h par semaine)<input type="number" min="1" max="60" step="0.5" inputmode="decimal" data-chg="ftw" value="'+ftwH()+'"></label><label>Référence 2025 : intérim (ETP)<input type="number" min="0" step="0.01" inputmode="decimal" data-chg="etpi" value="'+(getp(S,['cfg','etpI'])||'')+'"></label><label>Référence 2025 : autres (ETP)<input type="number" min="0" step="0.01" inputmode="decimal" data-chg="etpa" value="'+(getp(S,['cfg','etpA'])||'')+'"></label></div>';
   h+='<p class="count">Heures = shifts de l’horaire (pause déduite comme dans l’Excel) + absences payées (maladie, CP, F, RF, 8 h par défaut), gérants exclus. Chaque jour compte dans le mois où il tombe : une semaine à cheval est coupée au jour près, donc l’ETP d’un mois ou d’une année est exact. Le tableau « semaine par semaine » donne l’ETP de la semaine entière. Seules les semaines encodées dans l’appli sont comptées.</p>';
   return h;}
+function fbBanner(){
+  if(!useFb)return '<div class="notice" style="background:var(--amber-s);color:var(--amber)"><b>Attention :</b> cette version n’est pas connectée à Firebase. Les données restent sur cet appareil et ne sont pas partagées. Ouvrez l’adresse github.io avec la dernière version de l’appli.</div>';
+  if(syncState==='err')return '<div class="notice" style="background:var(--amber-s);color:var(--amber)"><b>Données non enregistrées :</b> '+esc(V.fbMsg||'erreur de synchronisation')+' Allez dans Équipe pour renvoyer les données une fois le problème réglé.</div>';
+  return '';}
 function mgrHtml(){
   if(!mgrCodes().length){if(!loaded)return '<div class="wrap"><p class="empty">Chargement…</p></div>';lsDel(LS_SESS);V.screen='home';return homeHtml();}
   var pend=allLeaves().filter(function(l){return l.s==='p';}).length;
-  var tabs=[['horaire','Horaire'],['dispos','Dispos'],['conges','Congés',pend||''],['prest','Prestations'],['etp','ETP'],['equipe','Équipe',contractAlerts().length||''],['activite','Activité',(V.mgrTab==='activite'?0:actNew())||''],['guide','Guide']],h=hdr('Gestion','Horaire de l’équipe',tabs,V.mgrTab,true)+'<div class="wrap wide">';
+  var tabs=[['horaire','Horaire'],['dispos','Dispos'],['conges','Congés',pend||''],['prest','Prestations'],['etp','ETP'],['equipe','Équipe',contractAlerts().length||''],['activite','Activité',(V.mgrTab==='activite'?0:actNew())||''],['guide','Guide']],h=hdr('Gestion','Horaire de l’équipe',tabs,V.mgrTab,true)+'<div class="wrap wide">'+fbBanner();
   if(V.mgrTab==='horaire')h+=mgrHoraire();
   else if(V.mgrTab==='dispos')h+=mgrDispos();
   else if(V.mgrTab==='conges')h+=mgrConges();
@@ -894,7 +899,7 @@ function bkHtml(){
   var last=lsGet('alrodis_lastbak'),old=!last||(Date.now()-(+last))>30*86400000,dt=last?new Date(+last):null;
   return '<div class="card"><h2>Sauvegarde des données</h2><p class="mute">Un fichier avec tout : équipe, horaires, dispos, congés, contrats, réglages.</p>'+
     (old?'<div class="notice" style="background:var(--amber-s);color:var(--amber)">'+(last?'Dernière sauvegarde : '+dmy(iso(dt))+'. Pensez à en refaire une.':'Aucune sauvegarde faite sur cet appareil.')+'</div>':'<p class="count">Dernière sauvegarde : '+dmy(iso(dt))+'</p>')+
-    '<div class="actions"><button class="btn pri" data-act="bk-dl">Télécharger une sauvegarde</button></div>'+
+    '<div class="actions"><button class="btn pri" data-act="bk-dl">Télécharger une sauvegarde</button><button class="btn" data-act="fb-push">Envoyer les données de cet appareil vers Firebase</button></div>'+
     '<label style="margin-top:14px">Restaurer depuis une sauvegarde (.json)<input type="file" accept=".json,application/json" data-chg="bkfile"></label><p class="count">Attention : la restauration remplace toutes les données actuelles. Gardez vos sauvegardes hors de l’application, avec vos documents comptables. Le fichier contient les noms de l’équipe : ne le partagez pas.</p></div>';}
 function bkDownload(){
   var o={app:'alrodis-horaire',v:1,date:new Date().toISOString(),data:S},b=new Blob([JSON.stringify(o)],{type:'application/json'});
@@ -909,7 +914,7 @@ function bkRestore(file){
     ne=Object.keys(d.employees).length;nw=d.weeks?Object.keys(d.weeks).length:0;
     if(!confirm('Remplacer TOUTES les données actuelles par la sauvegarde du '+String(o.date||'').slice(0,10)+' ('+ne+' personnes, '+nw+' semaines) ? Cette action est définitive.'))return;
     S=d;lsSet(LS_DATA,JSON.stringify(S));
-    if(useFb){try{ref.set(S).catch(function(){setSync('err');});}catch(e){setSync('err');}}
+    if(useFb){try{ref.set(S).catch(fbErr);}catch(e){setSync('err');}}
     V.sheet=null;toast('Sauvegarde restaurée');render();};
   rd.onerror=function(){toast('Fichier illisible');};
   rd.readAsText(file);}
@@ -1678,6 +1683,7 @@ function act(a,el){
     case 'logout':lsDel(LS_SESS);V.mgrWho='';V.screen='home';V.sheet=null;V.loginFor=null;render();break;
     case 'install':if(deferredInstall){var di=deferredInstall;deferredInstall=null;try{di.prompt();}catch(e1){}render();}break;
     case 'bk-dl':bkDownload();break;
+    case 'fb-push':if(!useFb){toast('Cette version n’est pas connectée à Firebase');break;}if(confirm('Envoyer toutes les données de cet appareil vers Firebase ? Elles remplaceront celles de la base en ligne.')){ref.set(S).then(function(){V.fbMsg='';setSync('ok');toast('Données envoyées vers Firebase');}).catch(fbErr);}break;
     case 'log-go':V.mgrTab=v;if(el.getAttribute('data-w'))V.wk=el.getAttribute('data-w');V.actSeen=undefined;render();break;
     case 'tab':if(V.screen==='emp')V.empTab=el.getAttribute('data-t');else{V.mgrTab=el.getAttribute('data-t');V.actSeen=(V.mgrTab==='activite')?seenGet():undefined;}V.sheet=null;render();break;
     case 'hv':V.hv=v;V.sheet=null;if(v==='m')V.hmo=iso(addDaysD(parse(V.wk),3)).slice(0,7);else if(V.hmo&&iso(addDaysD(parse(V.wk),3)).slice(0,7)!==V.hmo){var mm=V.hmo.split('-');V.wk=iso(mondayOf(new Date(+mm[0],+mm[1]-1,1)));}render();break;
