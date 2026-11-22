@@ -424,6 +424,28 @@ function cpList(e){
   var a=e.cp||[],o=[],k;
   if(a.length===undefined){for(k in a){if(a.hasOwnProperty(k))o.push(a[k]);}}else{o=a.slice();}
   return o.filter(function(p){return p&&p.f;}).sort(function(x,y){return x.f<y.f?-1:(x.f>y.f?1:0);});}
+function daysIn(f,t){return Math.round((parse(t)-parse(f))/864e5)+1;}
+function cpAvg(pr){return (pr&&pr.est>0&&pr.t)?pr.est/(daysIn(pr.f,pr.t)/7):0;}
+function cpWeekH(e,date){var ps=cpList(e),i;if(e.c!=='etu')return 0;for(i=0;i<ps.length;i++){if(ps[i].f<=date&&ps[i].t&&ps[i].t>=date&&ps[i].est>0)return cpAvg(ps[i]);}return 0;}
+function estCard(ym,list){
+  var h='',first=ym+'-01',last=monthDays(ym).slice(-1)[0],any=false;
+  list.forEach(function(e){
+    if(e.c!=='etu')return;
+    cpList(e).forEach(function(pr){
+      var a,b,ov,len,share,done=0,m,mEnd,r,td=iso(new Date()),endE,wkE,avgDone,remD,wkR;
+      if(!(pr.est>0&&pr.t)||pr.f>last||pr.t<first)return;
+      a=pr.f>first?pr.f:first;b=pr.t<last?pr.t:last;ov=daysIn(a,b);len=daysIn(pr.f,pr.t);
+      share=pr.est*ov/len;
+      m=pr.f.slice(0,7);mEnd=pr.t.slice(0,7)<ym?pr.t.slice(0,7):ym;
+      while(m<=mEnd){r=monthCalc(m,e);done+=r.w/60;m=addMonth(m,1);}
+      endE=pr.t<last?pr.t:last;if(td<endE)endE=td;
+      wkE=endE>=pr.f?daysIn(pr.f,endE)/7:0;avgDone=wkE>0?done/wkE:0;
+      remD=endE<pr.t?daysIn(addDays(endE,1),pr.t):0;wkR=remD/7;
+      any=true;
+      h+='<div class="mine"><b>'+esc(e.n)+' <span class="mute">du '+dmy(pr.f)+' au '+dmy(pr.t)+'</span></b><span>'+fmtN(Math.round(cpAvg(pr)*100)/100)+' h/sem.</span></div>'
+        +'<p class="mute" style="margin:2px 0 10px">Estimé sur le contrat : '+fmtN(pr.est)+' h · estimé pour ce mois : '+fmtN(Math.round(share*10)/10)+' h · prestées depuis le début : '+fmtN(Math.round(done*10)/10)+' h · reste : '+fmtN(Math.round((pr.est-done)*10)/10)+' h</p>'
+        +'<p style="margin:0 0 10px"><b>Moyenne prestée : '+fmtN(Math.round(avgDone*10)/10)+' h/sem.</b> <span class="mute">sur '+fmtN(Math.round(wkE*10)/10)+' sem. écoulées (objectif '+fmtN(Math.round(cpAvg(pr)*10)/10)+' h/sem.)</span>'+(wkR>0?'<br><span class="mute">Pour finir à '+fmtN(pr.est)+' h : '+fmtN(Math.round(Math.max(0,pr.est-done)/wkR*10)/10)+' h/sem. sur les '+fmtN(Math.round(wkR*10)/10)+' sem. restantes</span>':'')+'</p>';});});
+  return any?'<div class="card"><h2>Heures estimées des contrats</h2>'+h+'</div>':'';}
 function dmy(d){var p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0].slice(2);}
 function noContract(e){return e.c==='cdi'||e.c==='gerant';}
 function shiftAfter(eid,end){
@@ -531,6 +553,10 @@ function initData(){
           /* base vide : on y envoie les données déjà présentes sur cet appareil (ou l'équipe de départ) */
           if(localInit&&localInit.employees&&Object.keys(localInit.employees).length){S=localInit;}else{seedDemo();}
           ref.set(S);return;}
+        if(fbFirst&&v&&localInit){
+          /* la base ne contient que l'équipe de départ, alors que cet appareil a déjà un horaire encodé : on garde celui de l'appareil */
+          var wl=localInit.weeks?Object.keys(localInit.weeks).length:0,wr=v.weeks?Object.keys(v.weeks).length:0,ll=localInit.leaves?Object.keys(localInit.leaves).length:0,lr=v.leaves?Object.keys(v.leaves).length:0;
+          if((wl>wr||ll>lr)&&localInit.employees&&Object.keys(localInit.employees).length){fbFirst=false;S=localInit;ref.set(S);return;}}
         fbFirst=false;
         S=v||{};lsSet(LS_DATA,JSON.stringify(S));loaded=true;scheduleRender();},function(){setSync('err');});
       firebase.database().ref('.info/connected').on('value',function(s){setSync(s.val()?'ok':'off');});
@@ -570,7 +596,7 @@ function gridHtml(wk,mode,meId){
   for(d=0;d<7;d++){h+='<th'+(holName(addDays(wk,d))?' class="hol" title="'+esc(holName(addDays(wk,d)))+'"':'')+'><span class="dn">'+DS[d]+'</span><span class="dd">'+parse(addDays(wk,d)).getDate()+'</span></th>';}
   h+='<th class="tot">Total</th></tr></thead><tbody>';
   list.forEach(function(e){
-    var tm=weekMin(wk,e.id),c,dd,over=e.h&&tm>e.h*60;
+    var tm=weekMin(wk,e.id),c,dd,eh=cpWeekH(e,wk)||e.h,over=eh&&tm>eh*60;
     h+='<tr'+(meId===e.id?' class="me"':'')+'><th class="nm">'+esc(e.n)+'</th>';
     for(dd=0;dd<7;dd++){
       c=cellInfo(wk,e,dd);if(c.cls==='shift')pres[dd]++;
@@ -578,7 +604,7 @@ function gridHtml(wk,mode,meId){
         h+='<td class="ce">'+(avOk(wk,e,dd)?'<button class="ok1" data-act="av-ok" data-e="'+e.id+'" data-d="'+dd+'" title="Valider ces heures : '+esc(c.rg)+'" aria-label="Valider la dispo de '+esc(e.n)+'">✓</button>':'')+'<button class="cell '+c.cls+(c.warn?' warn':'')+'" data-act="cell" data-e="'+e.id+'" data-d="'+dd+'"'+(c.warn?' title="'+esc(c.warn)+'"':'')+'>'+(c.txt?esc(c.txt):'')+(c.warn?'<b class="wm">!</b>':'')+(c.av?'<i class="hint av-'+c.av+'">'+AV[c.av].c+'</i>':'')+(c.rg&&c.cls==='empty'?'<small class="avr">'+esc(c.rg)+'</small>':'')+(c.nt?'<small class="nt">✎</small>':'')+'</button></td>';
       }else{h+='<td class="c-'+c.cls+'">'+esc(c.txt)+'</td>';}
     }
-    h+='<td class="tot'+(over?' over':'')+'"'+(over?' title="Dépasse les '+e.h+' h du contrat"':'')+'>'+(tm?fmtH(tm):'')+'</td></tr>';
+    h+='<td class="tot'+(over?' over':'')+'"'+(over?' title="Dépasse les '+fmtN(Math.round(eh*10)/10)+' h du contrat"':'')+'>'+(tm?fmtH(tm):'')+'</td></tr>';
   });
   h+='<tr class="pres"><th class="nm">Présents</th>';
   for(d=0;d<7;d++)h+='<td>'+(pres[d]||'')+'</td>';
@@ -704,14 +730,15 @@ function etpMin(f,t){
 /* ETP contractuel (comparaison avec le bilan social) : heures de contrat par semaine ÷ temps plein, moyenne jour par jour sur la période.
    Personnel ALRODIS seulement (hors agence, hors gérants) ; un contrat suspendu (maladie, mutuelle) compte tant que la personne n'est pas sortie. */
 function etpContract(f,t){
-  var list=allEmps().filter(function(e){return e.c!=='gerant'&&!isAgency(e.c);}),d=f,days=0,sum=0,ft=ftwH(),i,e,miss={},cnt={};
+  var list=allEmps().filter(function(e){return e.c!=='gerant'&&!isAgency(e.c);}),d=f,days=0,sum=0,ft=ftwH(),i,e,eh,miss={},cnt={};
   while(d<=t){
     days++;
     for(i=0;i<list.length;i++){e=list[i];
       if(e.out&&d>e.out)continue;
       if(!e.a&&!e.out)continue;
       if(!inContract(e,d))continue;
-      if(e.h>0){sum+=e.h/ft;cnt[e.id]=1;}else{miss[e.id]=e.n;}}
+      eh=cpWeekH(e,d)||e.h;
+      if(eh>0){sum+=eh/ft;cnt[e.id]=1;}else{miss[e.id]=e.n;}}
     d=addDays(d,1);}
   return {etp:days?sum/days:0,n:Object.keys(cnt).length,miss:Object.keys(miss).filter(function(k){return !cnt[k];}).map(function(k){return miss[k];})};}
 function etpAllMin(r){return r.ag+r.ot+r.agA+r.otA;}
@@ -895,8 +922,8 @@ function cpHtml(e){
   ps=cpList(e);
   h='<div class="cpx"><b>Périodes de contrat</b>';
   if(!ps.length)h+='<p class="mute" style="margin:4px 0">Aucune période enregistrée.</p>';
-  for(i=0;i<ps.length;i++){h+='<div class="cpr"><span>Du '+dmy(ps[i].f)+(ps[i].t?' au '+dmy(ps[i].t):' (durée indéterminée)')+'</span><button class="btn sm danger" data-act="cp-del" data-id="'+e.id+'" data-v="'+i+'">Retirer</button></div>';}
-  h+='<div class="cpf">Du <input type="date" id="cpf-'+e.id+'"> au <input type="date" id="cpt-'+e.id+'"><button class="btn sm pri" data-act="cp-add" data-id="'+e.id+'">Ajouter</button></div><p class="mute" style="margin:4px 0 0;font-size:12px">« Au » vide = durée indéterminée (pas d’alerte).</p></div>';
+  for(i=0;i<ps.length;i++){h+='<div class="cpr"><span>Du '+dmy(ps[i].f)+(ps[i].t?' au '+dmy(ps[i].t):' (durée indéterminée)')+(e.c==='etu'&&cpAvg(ps[i])?' · '+fmtN(ps[i].est)+' h estimées = '+fmtN(Math.round(cpAvg(ps[i])*100)/100)+' h/sem.':'')+'</span><button class="btn sm danger" data-act="cp-del" data-id="'+e.id+'" data-v="'+i+'">Retirer</button></div>';}
+  h+='<div class="cpf">Du <input type="date" id="cpf-'+e.id+'"> au <input type="date" id="cpt-'+e.id+'">'+(e.c==='etu'?'<label style="margin-top:8px">Heures estimées sur toute la période (facultatif)<input type="number" step="0.5" min="0" inputmode="decimal" id="cpe-'+e.id+'" placeholder="ex. 120"></label>':'')+'<button class="btn sm pri" data-act="cp-add" data-id="'+e.id+'" style="margin-top:8px">Ajouter</button></div><p class="mute" style="margin:4px 0 0;font-size:12px">« Au » vide = durée indéterminée (pas d’alerte).'+(e.c==='etu'?' Avec des heures estimées et une date de fin, la moyenne par semaine est calculée et remplace les « heures de contrat par semaine » sur cette période.':'')+'</p></div>';
   return h;}
 function pcell(v){return '<td'+(v?'':' class="z"')+'>'+(v?fmtH(v):'–')+'</td>';}
 function detHtml(r){
@@ -911,7 +938,7 @@ function mgrPrest(){
   if(!off.length&&!ag.length)return h+'<div class="card empty-card"><b>Aucun employé</b><p>Ajoutez l’équipe et son type de contrat dans l’onglet Équipe.</p></div>';
   warns=uncoded(ym);
   if(warns.length){
-    h+='<div class="notice warnn"><b>À vérifier</b> : congé accepté sans code dans l’horaire (CP ou FR)<ul>';
+    h+='<div class="notice warnn"><b>À vérifier</b> : congé accepté sans code dans l’horaire (CP ou RF)<ul>';
     for(i=0;i<warns.length;i++)h+='<li>'+esc(warns[i].n)+' : '+lvRange({f:warns[i].f,t:warns[i].t})+' ('+warns[i].c+' j sans code)</li>';
     h+='</ul></div>';
   }
@@ -926,6 +953,7 @@ function mgrPrest(){
     h+='<div class="actions"><button class="btn sm pri" data-act="month-xlsx">Excel du mois (horaire complet)</button><button class="btn sm" data-act="prest-csv">Prestations (CSV)</button></div><div class="scroll"><table class="pr"><thead><tr><th>Employé</th><th>Heures</th><th>Jours</th><th title="Maladie">Mal.</th><th title="Congé payé">CP</th><th title="Férié">F</th><th title="Récupération férié">RF</th><th title="Absence justifiée">AJ</th><th title="Absence non justifiée">ANJ</th></tr></thead><tbody>'+rows+'</tbody><tfoot><tr><td>Total</td>'+pcell(T.w)+'<td>'+T.days+'</td>'+pcell(T.m)+pcell(T.cp)+pcell(T.f)+pcell(T.rf)+pcell(T.aj)+pcell(T.anj)+'</tr></tfoot></table></div>';
     h+='<p class="count">Heures = heures prestées. Mal. = maladie, CP = congé payé, F = férié, RF = récupération férié, AJ = absence justifiée, ANJ = absence non justifiée (non payée), tout en heures. Touchez un nom pour voir le détail jour par jour. Seuls les jours du mois comptent : une semaine à cheval est coupée au changement de mois. Une absence compte 8 h par défaut, modifiable dans la case de l’horaire.</p>';
   }
+  h+=estCard(ym,off);
   if(ag.length){
     h+='<h2 class="sec">Agence (non encodé dans Officient)</h2><div class="card" style="margin-top:0">';
     ag.forEach(function(e){h+='<div class="mine"><b>'+esc(e.n)+' <span class="mute">'+CT[e.c]+'</span></b><span>'+fmtH(agencyMin(ym,e))+' h</span></div>';});
@@ -1537,7 +1565,9 @@ function cpAdd(id){
   if(!e)return;
   if(!fv){toast('Indiquez la date de début');return;}
   if(tv&&tv<fv){toast('La fin doit être après le début');return;}
-  l=cpList(e);l.push(tv?{f:fv,t:tv}:{f:fv});
+  var ev=byId('cpe-'+id),est=(ev&&e.c==='etu')?parseFloat(ev.value):0,o={f:fv};if(tv)o.t=tv;if(est>0&&tv)o.est=est;
+  if(est>0&&!tv){toast('Indiquez aussi la date de fin pour calculer la moyenne');return;}
+  l=cpList(e);l.push(o);
   put('employees/'+id+'/cp',l);toast('Période ajoutée');}
 function cpDel(id,i){
   var e=empById(id),l;if(!e)return;
