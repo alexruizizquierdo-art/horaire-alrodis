@@ -839,7 +839,7 @@ function fbBanner(){
 function mgrHtml(){
   if(!mgrCodes().length){if(!loaded)return '<div class="wrap"><p class="empty">Chargement…</p></div>';lsDel(LS_SESS);V.screen='home';return homeHtml();}
   var pend=allLeaves().filter(function(l){return l.s==='p';}).length;
-  var tabs=[['horaire','Horaire'],['dispos','Dispos'],['conges','Congés',pend||''],['prest','Prestations'],['etp','ETP'],['equipe','Équipe',contractAlerts().length||''],['activite','Activité',(V.mgrTab==='activite'?0:actNew())||''],['guide','Guide']],h=hdr('Gestion','Horaire de l’équipe',tabs,V.mgrTab,true)+'<div class="wrap wide">'+fbBanner();
+  var tabs=[['horaire','Horaire'],['dispos','Dispos'],['conges','Congés',pend||''],['prest','Prestations'],['etp','ETP'],['equipe','Équipe',contractAlerts().length||''],['activite','Activité',(V.mgrTab==='activite'?0:actNew())||''],['guide','Guide']],h=hdr('Gestion','Horaire de l’équipe · version 23/11 13h45',tabs,V.mgrTab,true)+'<div class="wrap wide">'+fbBanner();
   if(V.mgrTab==='horaire')h+=mgrHoraire();
   else if(V.mgrTab==='dispos')h+=mgrDispos();
   else if(V.mgrTab==='conges')h+=mgrConges();
