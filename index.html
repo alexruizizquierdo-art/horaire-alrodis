@@ -867,11 +867,11 @@ function mgrMois(){
       ds=y+'-'+pad(m+1)+'-'+pad(d);dt=parse(ds);dw=(dt.getDay()+6)%7;wkm=iso(mondayOf(dt));
       c=cellInfo(wkm,e,dw);
       if(c.cls==='shift'){pres[d-1]++;tot+=shiftMin(getp(S,['weeks',wkm,'shifts',e.id,'d'+dw]));}
-      cells+='<td class="ce'+(dw===0?' mon':'')+(dw>4?' wkd':'')+'"><button class="cell '+c.cls+(c.warn?' warn':'')+'" data-act="mcell" data-e="'+e.id+'" data-date="'+ds+'"'+(c.warn?' title="'+esc(c.warn)+'"':'')+'>'+(c.txt?esc(c.txt):'')+(c.warn?'<b class="wm">!</b>':'')+'</button></td>';}
+      cells+='<td class="ce'+(dw===0?' mon':'')+(dw>4?' wkd':'')+'"><button class="cell '+c.cls+(c.warn?' warn':'')+'" data-act="mcell" data-e="'+e.id+'" data-date="'+ds+'"'+((c.warn||c.av)?' title="'+esc(c.warn||('Dispo : '+AV[c.av].l+(c.rg?' '+c.rg:'')))+'"':'')+'>'+(c.txt?esc(c.txt):'')+(c.warn?'<b class="wm">!</b>':'')+(c.av?'<i class="hint av-'+c.av+'">'+AV[c.av].c+'</i>':'')+(c.nt?'<small class="nt">✎</small>':'')+'</button></td>';}
     h+='<tr><th class="nm">'+esc(e.n)+'</th>'+cells+'<td class="tot">'+(tot?fmtH(tot):'')+'</td></tr>';});
   h+='<tr class="pres"><th class="nm">Présents</th>';
   for(d=0;d<nd;d++)h+='<td>'+(pres[d]||'')+'</td>';
-  return h+'<td></td></tr></tbody></table></div><p class="count">Touchez une case pour la modifier. Total = heures prestées dans le mois (pause déduite) ; les absences (CP, CM, F, RF…) figurent dans les cases mais pas dans ce total. Pour publier, imprimer ou valider les dispos, repassez en vue « Semaine ».</p>';}
+  return h+'<td></td></tr></tbody></table></div><div class="legend"><span>Dispos déclarées :</span><span><i class="hint av-libre">L</i>Libre</span><span><i class="hint av-matin">M</i>Matin</span><span><i class="hint av-apres">A</i>Après-midi</span><span><i class="hint av-h">H</i>Plage d’heures</span><span><i class="hint av-non">✕</i>Pas dispo</span><span><small class="nt" style="position:static">✎</small>Note</span></div><p class="count">Touchez une case pour la modifier. Total = heures prestées dans le mois (pause déduite) ; les absences (CP, CM, F, RF…) figurent dans les cases mais pas dans ce total. Pour publier, imprimer ou valider les dispos, repassez en vue « Semaine ».</p>';}
 function mgrActivite(){
   var L=S.log||{},a=[],k,h,sn=(V.actSeen===undefined)?seenGet():V.actSeen,i,x,e,nm,lv,when,dt,txt,go,sw,co;
   for(k in L){if(L.hasOwnProperty(k)&&L[k]&&L[k].e)a.push(L[k]);}
