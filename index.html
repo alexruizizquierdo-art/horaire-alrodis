@@ -677,10 +677,32 @@ function loginHtml(){
   else{title=mgr?'Créez le code '+mgrDe(who):'Créez votre code';sub=mgr?'4 à 8 chiffres. Gardez-le pour vous.':'Choisissez 4 chiffres faciles à retenir, '+e.n+'.';}
   return '<div class="wrap"><button class="btn ghost sm" data-act="home" style="margin-top:8px">‹ Retour</button><form class="card pinbox" data-form="pin"><h2>'+esc(title)+'</h2><p class="mute">'+esc(sub)+'</p><input type="password" id="pin" inputmode="numeric" pattern="[0-9]*" maxlength="'+(mgr?8:4)+'" autocomplete="off" aria-label="Code"><p class="err">'+esc(V.pinErr)+'</p><button class="btn pri" type="button" data-act="pin-ok">Valider</button></form></div>';}
 
+var APP_URL='https://alexruizizquierdo-art.github.io/horaire-alrodis/',DL_FIRST={'2026-12':'2026-11-27'};
+function availTarget(){return addMonth(iso(new Date()).slice(0,7),1);}
+function availDeadline(ym){return DL_FIRST[ym]||addDays(ym+'-01',-7);}
+function monthAnswered(eid,ym){var ds=monthDays(ym),n=0;
+  ds.forEach(function(d){var wk=iso(mondayOf(parse(d))),i=Math.round((parse(d)-parse(wk))/864e5),av=getp(S,['weeks',wk,'avail',eid,'d'+i]);if((av&&av.s)||leaveOn(eid,d))n++;});
+  return [n,ds.length];}
+function monthLbl(ym){return MONF[+ym.split('-')[1]-1].toLowerCase();}
+function availBanner(me){
+  var t=availTarget(),r=monthAnswered(me.id,t),dl=availDeadline(t),late=iso(new Date())>dl,lbl=monthLbl(t),dd=dmy(dl).slice(0,5);
+  if(r[0]>=r[1])return '';
+  return '<div class="notice" style="'+(late?'background:var(--red-s,#fee4e2);color:var(--red,#b42318)':'background:var(--amber-s);color:var(--amber)')+'"><b>'+(late?'En retard : ':'À faire : ')+'</b>vos disponibilités de '+lbl+' '+(late?'devaient être encodées avant le ':'sont à encoder avant le ')+dd+' ('+r[0]+' / '+r[1]+' jours remplis).<div style="margin-top:8px"><button class="btn sm pri" data-act="go-avail">Remplir mes disponibilités</button></div></div>';}
+function availRelance(){
+  var t=availTarget(),dl=availDeadline(t),lbl=monthLbl(t),late=iso(new Date())>dl,list=empsPub(),miss=[],h;
+  list.forEach(function(e){var r=monthAnswered(e.id,t);if(r[0]<r[1])miss.push({e:e,n:r[0],t:r[1]});});
+  h='<div class="card"><h2>Disponibilités de '+lbl+'</h2><p class="mute">À remplir avant le '+dmy(dl)+(late?' <b style="color:#b42318">(échéance dépassée)</b>':'')+' · '+(list.length-miss.length)+' sur '+list.length+' ont tout rempli.</p>';
+  if(!miss.length)return h+'<p class="count">Tout le monde a rempli ses disponibilités.</p></div>';
+  miss.forEach(function(m){h+='<div class="mine"><b>'+esc(m.e.n)+'</b><span>'+m.n+' / '+m.t+' jours</span></div>';});
+  return h+'<button class="btn pri" data-act="relance" style="margin-top:12px">Relancer par Messenger / message</button></div>';}
+function relanceText(){
+  var t=availTarget(),dl=availDeadline(t),names=[];
+  empsPub().forEach(function(e){var r=monthAnswered(e.id,t);if(r[0]<r[1])names.push(e.n);});
+  return 'Bonjour '+names.join(', ')+',\n\nvos disponibilités de '+monthLbl(t)+' ne sont pas encore (toutes) encodées dans l’appli. Merci de les remplir avant le '+dmy(dl).slice(0,5)+' :\n'+APP_URL+'\n\nMerci !';}
 function empHtml(){
   var me=curEmp();
   if(!me){if(!loaded)return '<div class="wrap"><p class="empty">Chargement…</p></div>';lsDel(LS_SESS);V.screen='home';return homeHtml();}
-  var tabs=[['dispos','Mes dispos'],['conges','Mes congés'],['horaire','Horaire'],['aide','Aide']],h=hdr('Bonjour '+me.n,'',tabs,V.empTab,false)+'<div class="wrap">';
+  var tabs=[['dispos','Mes dispos'],['conges','Mes congés'],['horaire','Horaire'],['aide','Aide']],h=hdr('Bonjour '+me.n,'',tabs,V.empTab,false)+'<div class="wrap">'+availBanner(me);
   if(V.empTab==='dispos')h+=empDispos(me);
   else if(V.empTab==='conges')h+=empConges(me);
   else if(V.empTab==='aide')h+=GUIDE_STAFF;
@@ -877,7 +899,7 @@ function mgrDispos(){
     if(n)ans++;
     cards+='<div class="dcard"><div class="dtop"><b>'+esc(e.n)+'</b>'+(n===7?'<span class="pill p-ok">7 / 7</span>':(n?'<span class="pill p-wait">'+n+' / 7</span>':'<span class="pill p-draft">Pas répondu</span>'))+'</div><div class="days7">'+row+'</div>'+(notes?'<ul class="nl">'+notes+'</ul>':'')+'</div>';
   });
-  h=weekNav(wk);
+  h=availRelance()+weekNav(wk);
   if(!list.length)return h+'<div class="card empty-card"><b>Aucun employé</b></div>';
   return h+'<p class="count">'+ans+' sur '+list.length+' ont répondu · C = congé accepté</p>'+cards;}
 
@@ -1694,6 +1716,8 @@ function act(a,el){
       V.hz=z;render();break;}
     case 'hmo':V.hmo=addMonth(V.hmo,+el.getAttribute('data-n'));V.sheet=null;render();break;
     case 'mcell':{var dd2=parse(el.getAttribute('data-date'));V.wk=iso(mondayOf(dd2));V.sheet={e:e,d:(dd2.getDay()+6)%7};render();break;}
+    case 'go-avail':V.empTab='dispos';V.wk=iso(mondayOf(parse(availTarget()+'-01')));V.sheet=null;render();break;
+    case 'relance':var rt=relanceText();if(navigator.share){navigator.share({text:rt}).catch(function(){});}else{try{navigator.clipboard.writeText(rt);toast('Message copié : collez-le dans Messenger');}catch(er){toast('Copiez le message à la main');}window.open('https://www.messenger.com/','_blank');}break;
     case 'wk':V.wk=addDays(V.wk,7*(+el.getAttribute('data-n')));V.sheet=null;render();break;
     case 'av':setAvail(+d,el.getAttribute('data-s'));break;
     case 'all-libre':allLibre();break;
